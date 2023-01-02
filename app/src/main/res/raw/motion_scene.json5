@@ -1,0 +1,83 @@
+{
+  ConstraintSets: {
+    start: {
+      my_image: {
+        width: 160,
+        height: 160,
+        top: ['parent', 'top', 0],
+        start: ['parent', 'start', 0],
+        end: ['parent', 'end', 0],
+      },
+
+      my_text: {
+        top: ['my_image', 'bottom', 16],
+        start: ['parent', 'start', 0],
+        end: ['parent', 'end', 0],
+        custom: {
+          textSize: 30,
+          textColor: '#FFFFFFFF'
+        }
+      },
+
+      settings: {
+        top: ['my_text', 'bottom', 16],
+        start: ['parent', 'start', 0],
+        end: ['parent', 'end', 0]
+      },
+
+      back_button: {
+        top: ['parent', 'top', 8],
+        start: ['parent', 'start', 8],
+      },
+
+      search_button: {
+        visibility: 'gone',
+        top: ['parent', 'top', 8],
+        end: ['parent', 'end', 8],
+      },
+
+      list_button: {
+        top: ['parent', 'top', 8],
+        end: ['parent', 'end', 8],
+      }
+    },
+    end: {
+      my_image: {
+        width: 70,
+        height: 70,
+        start: ['parent', 'start', 24]
+      },
+
+      my_text: {
+        start: ['my_image', 'end', 16],
+        top: ['my_image', 'top', 0],
+        bottom: ['my_image', 'bottom', 0],
+        custom: {
+          textColor: '#FFCDDC39',
+          textSize: 20
+        }
+      },
+
+      settings: {
+        visibility: 'gone',
+        start: ['parent', 'center'],
+        top: ['my_text', 'bottom', 16],
+      },
+
+      back_button: {
+        top: ['parent', 'top', 8],
+        start: ['parent', 'start', 8],
+      },
+      search_button: {
+        top: ['parent', 'top', 8],
+        end: ['parent', 'end', 8],
+      },
+
+      list_button: {
+        visibility: 'gone',
+        top: ['parent', 'top', 8],
+        end: ['parent', 'end', 8],
+      }
+    }
+  },
+}

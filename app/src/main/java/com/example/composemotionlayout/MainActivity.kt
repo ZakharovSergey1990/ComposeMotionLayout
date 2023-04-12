@@ -2,36 +2,44 @@ package com.example.composemotionlayout
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.MutatePriority
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.stopScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ExperimentalMotionApi
 import androidx.constraintlayout.compose.MotionLayout
 import androidx.constraintlayout.compose.MotionScene
+import com.example.composemotionlayout.AppBarState.PreExpand.modify
 import com.example.composemotionlayout.ui.theme.ComposeMotionLayoutTheme
 
 class MainActivity : ComponentActivity() {
@@ -45,18 +53,26 @@ class MainActivity : ComponentActivity() {
                 users.add(i)
             }
 
+            var expand by remember{ mutableStateOf(true) }
+
             ComposeMotionLayoutTheme {
                 val lazyListState = rememberLazyListState()
                 Scaffold(topBar =
                 {
                         val progress by animateFloatAsState(
-                            targetValue = if (lazyListState.firstVisibleItemIndex == 0 && lazyListState.firstVisibleItemScrollOffset == 0) 0f else 1f,
+                            targetValue = if (expand) 0f else 1f,
                             tween(800)
                         )
                     AppBar(progress = progress)
                 }
                 ) {
-                    LazyColumn(state = lazyListState, modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally){
+                    LazyColumn(state = lazyListState,
+                               modifier = Modifier.fillMaxWidth()
+                                                  .appBarViewState(lazyListState, expand = {
+                                                      Log.i("MainActivity", "expand = $it")
+                                                      expand = it
+                                                  }),
+                        horizontalAlignment = Alignment.CenterHorizontally){
                         items(users){
                             Card(modifier = Modifier.padding(4.dp)) {
                                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier
@@ -163,3 +179,73 @@ fun OtherSettings(id: String) {
         }
     }
 }
+
+
+
+@SuppressLint("ModifierFactoryUnreferencedReceiver")
+@Composable
+fun Modifier.appBarViewState(lazyListState: LazyListState, expand: (Boolean) -> Unit): Modifier{
+    var state by remember{ mutableStateOf<AppBarState>(AppBarState.Expand) }
+    LaunchedEffect(key1 = state) {
+        when (state) {
+            is AppBarState.Expand -> {
+                expand(true)
+            }
+            is AppBarState.PreExpand -> {
+                expand(false)
+                lazyListState.stopScroll(scrollPriority = MutatePriority.UserInput)
+                lazyListState.scrollToItem(0)
+            }
+            is AppBarState.Collapse -> {
+                expand(false)
+            }
+        }
+    }
+val nestedScrollState = object: NestedScrollConnection {
+    override fun onPostScroll(
+        consumed: Offset,
+        available: Offset,
+        source: NestedScrollSource
+    ): Offset {
+        Log.i("MainActivity", "onPreScroll: consumed = $consumed available = $available, source = $source, state = $state")
+        val isMovingDown = when{
+            available.y.toInt() > 0 -> false
+            consumed.y.toInt() < 0 -> true
+            consumed.y.toInt() > 0 -> false
+            else -> return Offset.Zero
+        }
+            state = state.modify(isMovingDown, lazyListState.isStart())
+            return Offset.Zero
+    }
+}
+    return this.nestedScroll(nestedScrollState)
+}
+
+sealed class AppBarState{
+    object Expand : AppBarState()
+    object PreExpand : AppBarState()
+    object Collapse : AppBarState()
+
+    fun AppBarState.modify(isMovingDown: Boolean, isStart: Boolean): AppBarState{
+       return when(this){
+            is Expand ->{
+                if(isMovingDown) PreExpand
+                else Expand
+            }
+            is PreExpand ->{
+                if(isMovingDown) Collapse
+                else Expand
+            }
+            is Collapse ->{
+                if(isStart && !isMovingDown) PreExpand
+                else Collapse
+            }
+        }
+    }
+}
+
+fun LazyListState.isStart(): Boolean {
+   return this.firstVisibleItemIndex == 0 && this.firstVisibleItemScrollOffset == 0
+}
+
+
